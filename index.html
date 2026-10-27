@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bee Swarm Simulator Ultimate Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS CDN with Fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+            touch-action: manipulation;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        /* Custom Scrollbar for UI elements */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(234, 179, 8, 0.6);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.9);
+        }
+        .modal-blur {
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white relative h-screen w-screen overflow-hidden select-none">
+
+    <!-- GAME CANVAS -->
+    <canvas id="gameCanvas" class="w-full h-full cursor-crosshair"></canvas>
+
+    <!-- TOP HUD OVERLAY -->
+    <div class="absolute top-3 left-3 right-3 flex justify-between items-center pointer-events-none z-10">
+        <!-- Stats Bar -->
+        <div class="flex flex-wrap gap-2 sm:gap-4 bg-slate-900/85 backdrop-blur border border-amber-500/30 p-2.5 rounded-2xl shadow-xl pointer-events-auto">
+            <div class="flex items-center gap-2 px-3 py-1 bg-amber-950/50 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-jar text-amber-400 text-lg"></i>
+                <div>
+                    <div class="text-[10px] text-amber-300 font-bold tracking-wider uppercase">Honey</div>
+                    <div id="honeyVal" class="text-sm sm:text-base font-extrabold text-amber-300">0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-1 bg-amber-950/50 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-sack-backpack text-yellow-500 text-lg"></i>
+                <div class="w-24 sm:w-32">
+                    <div class="flex justify-between text-[10px] text-yellow-300 font-bold uppercase">
+                        <span>Pollen</span>
+                        <span id="pollenCapacityVal">0 / 100</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mt-0.5 border border-amber-500/20">
+                        <div id="pollenBar" class="bg-gradient-to-r from-yellow-500 to-amber-300 h-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-1 bg-amber-950/50 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-crown text-yellow-400 text-lg"></i>
+                <div>
+                    <div class="text-[10px] text-yellow-300 font-bold tracking-wider uppercase">Bees</div>
+                    <div id="beesVal" class="text-sm sm:text-base font-extrabold text-yellow-300">0 / 5</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-1 bg-amber-950/50 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-[#ea580c] fa-gem text-orange-400 text-lg"></i>
+                <div>
+                    <div class="text-[10px] text-orange-300 font-bold tracking-wider uppercase">Royal Jelly</div>
+                    <div id="rjVal" class="text-sm sm:text-base font-extrabold text-orange-400">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action / Toggle Buttons -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btnMultiplayer" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-indigo-400/40 flex items-center gap-2 transition">
+                <i class="fa-solid fa-globe"></i>
+                <span class="hidden sm:inline">Multiplayer</span>
+            </button>
+            <button id="btnAdmin" class="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-red-400/40 flex items-center gap-2 transition">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span class="hidden sm:inline">Admin (~)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM MOBILE TOOLBAR & CONTROLS -->
+    <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none z-10">
+        <!-- Quick Action Info -->
+        <div class="bg-slate-900/80 backdrop-blur p-3 rounded-2xl border border-slate-700/60 pointer-events-auto max-w-xs sm:max-w-md hidden sm:block">
+            <div id="questStatus" class="text-xs text-slate-300 font-medium">
+                <i class="fa-solid fa-scroll text-amber-400 mr-1.5"></i>
+                <span id="questText">Talk to Black Bear at spawn to start quests!</span>
+            </div>
+        </div>
+
+        <!-- Action / Swing Button (Mobile Touch Support) -->
+        <div class="pointer-events-auto flex items-center gap-3">
+            <button id="btnSwing" class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400 to-amber-600 active:scale-90 text-slate-950 font-black rounded-full shadow-2xl border-4 border-amber-200 flex flex-col items-center justify-center transition">
+                <i class="fa-solid fa-hand-pointer text-xl sm:text-2xl"></i>
+                <span class="text-[10px] font-black uppercase">Scoop</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MULTIPLAYER MODAL -->
+    <div id="multiplayerModal" class="fixed inset-0 bg-slate-950/80 modal-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative mx-4">
+            <button id="closeMultiplayerModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center border border-indigo-500/40 text-indigo-400 text-2xl">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-white">PeerJS WebRTC Multiplayer</h2>
+                    <p class="text-xs text-slate-400">Play together across browsers directly P2P!</p>
+                </div>
+            </div>
+
+            <!-- Player Name -->
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Your Name</label>
+                <input id="playerNameInput" type="text" maxlength="16" value="Beekeeper" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <!-- Room Hosting / Status -->
+            <div class="bg-slate-800/60 rounded-2xl p-4 border border-slate-700/60 mb-6">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Host Session</div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span id="myPeerIdDisplay" class="font-mono text-xs bg-slate-950 px-3 py-2 rounded-xl text-indigo-300 flex-1 border border-slate-800 truncate">Generating Peer ID...</span>
+                    <button id="btnCopyPeerId" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2 px-3 rounded-xl text-xs transition">
+                        <i class="fa-solid fa-copy"></i> Copy
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400">Share your ID with friends to let them join your hive field!</p>
+            </div>
+
+            <!-- Join Session -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Join Host Room</label>
+                <div class="flex gap-2">
+                    <input id="joinRoomInput" type="text" placeholder="Enter Host Peer ID..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <button id="btnJoinRoom" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2 px-5 rounded-xl text-sm transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plug"></i> Join
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="connectionStatus" class="mt-4 text-xs font-semibold text-center text-slate-400">
+                Status: <span id="statusText" class="text-amber-400">Offline / Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL MODAL -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-950/80 modal-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative mx-4 max-h-[90vh] overflow-y-auto">
+            <button id="closeAdminModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-red-600/20 rounded-2xl flex items-center justify-center border border-red-500/40 text-red-400 text-2xl">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-white">Admin Commands Panel</h2>
+                    <p class="text-xs text-slate-400">Full game state modifications & cheats</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button id="admAddHoney" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-coins"></i> +1,000,000 Honey
+                </button>
+                <button id="admAddRJ" class="bg-orange-600 hover:bg-orange-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-gem"></i> +50 Royal Jelly
+                </button>
+                <button id="admFillPollen" class="bg-yellow-600 hover:bg-yellow-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-fill"></i> Fill Backpack
+                </button>
+                <button id="admEmptyPollen" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-dumpster"></i> Empty Backpack
+                </button>
+                <button id="admSpawnBee" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-bug"></i> Add Basic Bee
+                </button>
+                <button id="admSpawnMythic" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Add Mythic Bee
+                </button>
+                <button id="admMaxGear" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> Max Equipment
+                </button>
+                <button id="admUnlockGates" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-door-open"></i> Toggle Unlock All Gates
+                </button>
+                <button id="admFinishQuest" class="bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> Complete Active Quest
+                </button>
+                <button id="admToggleInfCapacity" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-infinity"></i> Toggle Inf Capacity
+                </button>
+                <button id="admToggleSpeed" class="bg-pink-600 hover:bg-pink-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-bolt"></i> Toggle 3x Walk Speed
+                </button>
+                <button id="admResetGame" class="bg-red-700 hover:bg-red-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i> Clear Save Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-20 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-40 pointer-events-none"></div>
+
+    <!-- MAIN GAME SCRIPT -->
+    <script>
+        // --- SOUND SYNTHESIZER (Web Audio API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            scoop() {
+                this.init();
+                this.playTone(320, 'triangle', 0.08, 0.15);
+            }
+            token() {
+                this.init();
+                this.playTone(600, 'sine', 0.1, 0.2);
+                setTimeout(() => this.playTone(880, 'sine', 0.15, 0.2), 60);
+            }
+            convert() {
+                this.init();
+                this.playTone(200, 'sawtooth', 0.2, 0.1);
+            }
+            hatch() {
+                this.init();
+                this.playTone(400, 'sine', 0.1, 0.2);
+                setTimeout(() => this.playTone(600, 'sine', 0.1, 0.2), 100);
+                setTimeout(() => this.playTone(900, 'sine', 0.2, 0.25), 200);
+            }
+            hit() {
+                this.init();
+                this.playTone(120, 'square', 0.1, 0.2);
+            }
+        }
+        const sound = new SoundEngine();
+
+        // --- TOAST SYSTEM ---
+        function showToast(text, color = 'bg-amber-600') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `${color} text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-xl transition-all duration-300 opacity-0 transform translate-y-2`;
+            toast.innerText = text;
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            });
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // --- GAME CONSTANTS & WORLD MAP SETUP ---
+        const WORLD = { width: 2500, height: 1800 };
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Bee Rarities & Stats
+        const BEE_TYPES = {
+            BASIC: { name: 'Basic Bee', color: '#f59e0b', rarity: 'Common', gathering: 1, attack: 2 },
+            RARE: { name: 'Bubble Bee', color: '#3b82f6', rarity: 'Rare', gathering: 1.5, attack: 3 },
+            EPIC: { name: 'Rage Bee', color: '#ef4444', rarity: 'Epic', gathering: 2, attack: 5 },
+            LEGENDARY: { name: 'Shy Bee', color: '#10b981', rarity: 'Legendary', gathering: 3, attack: 7 },
+            MYTHIC: { name: 'Spicy Bee', color: '#a855f7', rarity: 'Mythic', gathering: 5, attack: 12 }
+        };
+
+        // Equipment Definitions
+        const TOOLS = [
+            { id: 'SCOOPER', name: 'Scooper', cost: 0, power: 1, radius: 20 },
+            { id: 'CLIPPER', name: 'Clippers', cost: 1000, power: 3, radius: 30 },
+            { id: 'RAKE', name: 'Golden Rake', cost: 10000, power: 8, radius: 45 },
+            { id: 'SCYTHE', name: 'Dark Scythe', cost: 100000, power: 20, radius: 65 }
+        ];
+
+        const CONTAINERS = [
+            { id: 'POUCH', name: 'Pouch', cost: 0, capacity: 100 },
+            { id: 'CANISTER', name: 'Jar', cost: 1500, capacity: 500 },
+            { id: 'BACKPACK', name: 'Backpack', cost: 20000, capacity: 2500 },
+            { id: 'PRO', name: 'Pro Container', cost: 250000, capacity: 15000 }
+        ];
+
+        // --- GAME STATE ---
+        let gameState = {
+            honey: 0,
+            pollen: 0,
+            containerIndex: 0,
+            toolIndex: 0,
+            maxHiveSlots: 5,
+            royalJelly: 3,
+            bees: [],
+            unlockedGates: false,
+            infiniteCapacity: false,
+            speedBoost: false,
+            activeQuestIndex: 0,
+            questProgress: 0,
+            x: 400,
+            y: 400,
+            name: 'Beekeeper'
+        };
+
+        // Initialize First Bees
+        gameState.bees = [
+            { id: 1, type: 'BASIC', level: 1 },
+            { id: 2, type: 'BASIC', level: 1 }
+        ];
+
+        // Save / Load System
+        function saveGame() {
+            try {
+                localStorage.setItem('bss_ultimate_save', JSON.stringify(gameState));
+                showToast('💾 Progress Saved!', 'bg-emerald-600');
+            } catch(e) {}
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('bss_ultimate_save');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    gameState = { ...gameState, ...parsed };
+                }
+            } catch(e) {}
+        }
+        loadGame();
+        setInterval(saveGame, 10000);
+
+        // --- MAP ENTITIES & FIELDS ---
+        const fields = [
+            { id: 'dandelion', name: 'Dandelion Field', x: 200, y: 300, w: 350, h: 250, color: '#fef08a', reqBees: 0 },
+            { id: 'clover', name: 'Clover Field', x: 650, y: 300, w: 350, h: 250, color: '#86efac', reqBees: 0 },
+            { id: 'sunflower', name: 'Sunflower Field', x: 200, y: 650, w: 350, h: 250, color: '#fde047', reqBees: 5 },
+            { id: 'rose', name: 'Rose Field', x: 650, y: 650, w: 350, h: 250, color: '#fca5a5', reqBees: 10 },
+            { id: 'pine', name: 'Pine Tree Forest', x: 1100, y: 300, w: 450, h: 350, color: '#6ee7b7', reqBees: 15 }
+        ];
+
+        // Hive Position
+        const hivePos = { x: 400, y: 150, w: 280, h: 100 };
+
+        // Bear Quest NPC
+        const bearNpc = { x: 300, y: 200, radius: 25, name: 'Black Bear' };
+
+        // Generate Field Flowers
+        let flowers = [];
+        fields.forEach(field => {
+            const cols = Math.floor(field.w / 25);
+            const rows = Math.floor(field.h / 25);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    flowers.push({
+                        x: field.x + c * 25 + 12.5,
+                        y: field.y + r * 25 + 12.5,
+                        fieldId: field.id,
+                        stage: 3, // 1 to 3 pollen size
+                        maxStage: 3
+                    });
+                }
+            }
+        });
+
+        // Drop Tokens Container
+        let tokens = [];
+
+        function spawnToken(x, y, type = 'POLLEN', value = 10) {
+            tokens.push({
+                x, y, type, value,
+                vx: (Math.random() - 0.5) * 3,
+                vy: (Math.random() - 0.5) * 3,
+                life: 600 // 10s
+            });
+        }
+
+        // Mobs / Enemies
+        let mobs = [
+            { id: 1, type: 'Rhinoceros Beetle', x: 750, y: 750, radius: 20, hp: 50, maxHp: 50, speed: 1.2, targetX: 750, targetY: 750 },
+            { id: 2, type: 'Ladybug', x: 400, y: 750, radius: 18, hp: 30, maxHp: 30, speed: 1.5, targetX: 400, targetY: 750 }
+        ];
+
+        // --- LOCAL PLAYER & CONTROLS ---
+        const player = {
+            x: gameState.x || 400,
+            y: gameState.y || 400,
+            radius: 16,
+            speed: 3.5,
+            vx: 0,
+            vy: 0,
+            isSwinging: false,
+            swingAngle: 0
+        };
+
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.key === '`' || e.key === '~') {
+                toggleAdminModal();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            keys[e.code] = false;
+        });
+
+        // --- BEES SYSTEM AI ---
+        let beesWorld = [];
+
+        function updateBeesWorld() {
+            // Keep beesWorld synchronized with gameState.bees
+            while (beesWorld.length < gameState.bees.length) {
+                const bData = gameState.bees[beesWorld.length];
+                beesWorld.push({
+                    id: bData.id,
+                    type: bData.type,
+                    x: player.x + (Math.random() - 0.5) * 40,
+                    y: player.y + (Math.random() - 0.5) * 40,
+                    vx: 0,
+                    vy: 0,
+                    targetX: player.x,
+                    targetY: player.y
+                });
+            }
+            if (beesWorld.length > gameState.bees.length) {
+                beesWorld.length = gameState.bees.length;
+            }
+            // Update type if mutated
+            beesWorld.forEach((bw, i) => {
+                if (gameState.bees[i]) {
+                    bw.type = gameState.bees[i].type;
+                }
+            });
+        }
+
+        // --- MULTIPLAYER (PeerJS Integration) ---
+        let peer = null;
+        let myPeerId = '';
+        let peerConnections = {};
+        let remotePlayers = {}; // { peerId: { x, y, name, beeCount, toolIndex, isSwinging } }
+
+        function initPeerJS() {
+            if (typeof Peer === 'undefined') {
+                document.getElementById('myPeerIdDisplay').innerText = 'Multiplayer CDN Unavailable (Offline Mode)';
+                document.getElementById('statusText').innerText = 'Offline Mode (PeerJS CDN Blocked/Offline)';
+                document.getElementById('statusText').className = 'text-amber-400';
+                return;
+            }
+
+            try {
+                peer = new Peer();
+
+                peer.on('open', id => {
+                    myPeerId = id;
+                    document.getElementById('myPeerIdDisplay').innerText = id;
+                    document.getElementById('statusText').innerText = 'Online / Ready to Host';
+                    document.getElementById('statusText').className = 'text-emerald-400';
+                });
+
+                peer.on('connection', conn => {
+                    setupConnection(conn);
+                });
+
+                peer.on('error', err => {
+                    showToast('Multiplayer connection error', 'bg-red-600');
+                });
+            } catch (err) {
+                console.warn('PeerJS Initialization failed:', err);
+                document.getElementById('statusText').innerText = 'Offline / PeerJS Failed';
+            }
+        }
+
+        function setupConnection(conn) {
+            peerConnections[conn.peer] = conn;
+
+            conn.on('open', () => {
+                showToast(`Player Connected: ${conn.peer.substring(0, 6)}...`, 'bg-indigo-600');
+                sound.hatch();
+            });
+
+            conn.on('data', data => {
+                // Receive remote player state update
+                if (data.type === 'PLAYER_SYNC') {
+                    remotePlayers[data.id] = data.payload;
+                }
+            });
+
+            conn.on('close', () => {
+                delete remotePlayers[conn.peer];
+                delete peerConnections[conn.peer];
+                showToast('Player Disconnected', 'bg-slate-700');
+            });
+        }
+
+        function joinRoom(hostId) {
+            if (!peer || !hostId) return;
+            document.getElementById('statusText').innerText = 'Connecting...';
+            document.getElementById('statusText').className = 'text-amber-400';
+
+            const conn = peer.connect(hostId);
+            conn.on('open', () => {
+                document.getElementById('statusText').innerText = 'Connected to Host!';
+                document.getElementById('statusText').className = 'text-emerald-400';
+                setupConnection(conn);
+                showToast('Successfully joined room!', 'bg-emerald-600');
+            });
+        }
+
+        function broadcastPlayerSync() {
+            if (!peer) return;
+            const payload = {
+                type: 'PLAYER_SYNC',
+                id: myPeerId,
+                payload: {
+                    x: player.x,
+                    y: player.y,
+                    name: gameState.name,
+                    beeCount: gameState.bees.length,
+                    toolIndex: gameState.toolIndex,
+                    isSwinging: player.isSwinging
+                }
+            };
+            Object.values(peerConnections).forEach(conn => {
+                if (conn.open) {
+                    conn.send(payload);
+                }
+            });
+        }
+
+        // Broadcast 20 times per second
+        setInterval(broadcastPlayerSync, 50);
+
+        // --- HARVESTING & SCOOPING ACTION ---
+        function scoopPollen() {
+            sound.scoop();
+            player.isSwinging = true;
+            player.swingAngle = 0;
+
+            const tool = TOOLS[gameState.toolIndex];
+            const cap = CONTAINERS[gameState.containerIndex].capacity;
+
+            // Harvest nearby flowers
+            flowers.forEach(fl => {
+                const dist = Math.hypot(fl.x - player.x, fl.y - player.y);
+                if (dist < tool.radius + 15 && fl.stage > 0) {
+                    fl.stage--;
+                    const pollenGained = tool.power * 2;
+                    if (gameState.infiniteCapacity || gameState.pollen < cap) {
+                        gameState.pollen += pollenGained;
+                        if (!gameState.infiniteCapacity && gameState.pollen > cap) {
+                            gameState.pollen = cap;
+                        }
+                    }
+                    // Spawn Token chance
+                    if (Math.random() < 0.25) {
+                        spawnToken(fl.x, fl.y, 'POLLEN', 15);
+                    }
+                }
+            });
+
+            // Attack Mobs
+            mobs.forEach(mob => {
+                const dist = Math.hypot(mob.x - player.x, mob.y - player.y);
+                if (dist < tool.radius + mob.radius) {
+                    mob.hp -= tool.power * 5;
+                    sound.hit();
+                    if (mob.hp <= 0) {
+                        // Kill Mob rewards
+                        spawnToken(mob.x, mob.y, 'HONEY', 500);
+                        spawnToken(mob.x, mob.y, 'ROYAL_JELLY', 1);
+                        showToast(`Defeated ${mob.type}!`, 'bg-amber-600');
+                        // Respawn Mob
+                        mob.hp = mob.maxHp;
+                        mob.x = 400 + Math.random() * 500;
+                        mob.y = 700 + Math.random() * 200;
+                    }
+                }
+            });
+
+            // Quest check
+            checkQuestProgress('HARVEST', tool.power);
+        }
+
+        // --- QUEST SYSTEM ---
+        const QUESTS = [
+            { name: 'First Harvest', target: 200, type: 'HARVEST', rewardHoney: 500, rewardRJ: 1 },
+            { name: 'Honey Collector', target: 2000, type: 'HARVEST', rewardHoney: 2500, rewardRJ: 3 },
+            { name: 'Field Master', target: 10000, type: 'HARVEST', rewardHoney: 15000, rewardRJ: 10 }
+        ];
+
+        function checkQuestProgress(type, amount) {
+            const q = QUESTS[gameState.activeQuestIndex];
+            if (!q) return;
+            if (q.type === type) {
+                gameState.questProgress += amount;
+                if (gameState.questProgress >= q.target) {
+                    // Reward
+                    gameState.honey += q.rewardHoney;
+                    gameState.royalJelly += q.rewardRJ;
+                    showToast(`Quest Complete: ${q.name}! +${q.rewardHoney} Honey`, 'bg-amber-500');
+                    gameState.activeQuestIndex++;
+                    gameState.questProgress = 0;
+                }
+            }
+        }
+
+        // --- ADMIN PANEL FUNCTIONS ---
+        function toggleAdminModal() {
+            const modal = document.getElementById('adminModal');
+            modal.classList.toggle('hidden');
+        }
+
+        document.getElementById('btnAdmin').onclick = toggleAdminModal;
+        document.getElementById('closeAdminModal').onclick = toggleAdminModal;
+
+        document.getElementById('admAddHoney').onclick = () => { gameState.honey += 1000000; showToast('+1,000,000 Honey!'); };
+        document.getElementById('admAddRJ').onclick = () => { gameState.royalJelly += 50; showToast('+50 Royal Jelly!'); };
+        document.getElementById('admFillPollen').onclick = () => { gameState.pollen = CONTAINERS[gameState.containerIndex].capacity; showToast('Backpack Filled!'); };
+        document.getElementById('admEmptyPollen').onclick = () => { gameState.pollen = 0; showToast('Backpack Emptied!'); };
+        document.getElementById('admSpawnBee').onclick = () => {
+            if (gameState.bees.length < gameState.maxHiveSlots) {
+                gameState.bees.push({ id: Date.now(), type: 'BASIC', level: 1 });
+                showToast('Added Basic Bee!');
+            } else {
+                showToast('Hive Slots Full!', 'bg-red-600');
+            }
+        };
+        document.getElementById('admSpawnMythic').onclick = () => {
+            if (gameState.bees.length < gameState.maxHiveSlots) {
+                gameState.bees.push({ id: Date.now(), type: 'MYTHIC', level: 1 });
+                showToast('Added Mythic Bee!', 'bg-purple-600');
+            } else {
+                showToast('Hive Slots Full!', 'bg-red-600');
+            }
+        };
+        document.getElementById('admMaxGear').onclick = () => {
+            gameState.toolIndex = TOOLS.length - 1;
+            gameState.containerIndex = CONTAINERS.length - 1;
+            showToast('Max Equipment Unlocked!');
+        };
+        document.getElementById('admUnlockGates').onclick = () => {
+            gameState.unlockedGates = !gameState.unlockedGates;
+            showToast(`All Gates Unlocked: ${gameState.unlockedGates}`);
+        };
+        document.getElementById('admFinishQuest').onclick = () => {
+            const q = QUESTS[gameState.activeQuestIndex];
+            if (q) {
+                gameState.questProgress = q.target;
+                checkQuestProgress('HARVEST', 0);
+            }
+        };
+        document.getElementById('admToggleInfCapacity').onclick = () => {
+            gameState.infiniteCapacity = !gameState.infiniteCapacity;
+            showToast(`Infinite Capacity: ${gameState.infiniteCapacity}`);
+        };
+        document.getElementById('admToggleSpeed').onclick = () => {
+            gameState.speedBoost = !gameState.speedBoost;
+            showToast(`3x Speed Boost: ${gameState.speedBoost}`);
+        };
+        document.getElementById('admResetGame').onclick = () => {
+            localStorage.removeItem('bss_ultimate_save');
+            location.reload();
+        };
+
+        // --- MULTIPLAYER MODAL BINDINGS ---
+        const mpModal = document.getElementById('multiplayerModal');
+        document.getElementById('btnMultiplayer').onclick = () => mpModal.classList.remove('hidden');
+        document.getElementById('closeMultiplayerModal').onclick = () => mpModal.classList.add('hidden');
+
+        document.getElementById('playerNameInput').onchange = (e) => {
+            gameState.name = e.target.value || 'Beekeeper';
+        };
+
+        document.getElementById('btnCopyPeerId').onclick = () => {
+            if (myPeerId) {
+                const el = document.createElement('textarea');
+                el.value = myPeerId;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast('Copied Peer ID to Clipboard!');
+            }
+        };
+
+        document.getElementById('btnJoinRoom').onclick = () => {
+            const hostId = document.getElementById('joinRoomInput').value.trim();
+            if (hostId) joinRoom(hostId);
+        };
+
+        document.getElementById('btnSwing').onclick = scoopPollen;
+
+        // --- UPDATE LOOP ---
+        let lastTime = performance.now();
+
+        function update(dt) {
+            // Movement Logic
+            let speed = (gameState.speedBoost ? 10.5 : 3.5);
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+            let nextX = player.x + dx * speed;
+            let nextY = player.y + dy * speed;
+
+            // Bee Gate Barriers Check
+            if (!gameState.unlockedGates) {
+                fields.forEach(field => {
+                    if (field.reqBees > gameState.bees.length) {
+                        // Block entering field bounds
+                        if (nextX > field.x && nextX < field.x + field.w &&
+                            nextY > field.y && nextY < field.y + field.h) {
+                            nextX = player.x;
+                            nextY = player.y;
+                            showToast(`Requires ${field.reqBees} Bees to Enter!`, 'bg-red-600');
+                        }
+                    }
+                });
+            }
+
+            // World Edge Collisions
+            player.x = Math.max(20, Math.min(WORLD.width - 20, nextX));
+            player.y = Math.max(20, Math.min(WORLD.height - 20, nextY));
+
+            // Hive Pollen Conversion Zone
+            if (player.x > hivePos.x && player.x < hivePos.x + hivePos.w &&
+                player.y > hivePos.y && player.y < hivePos.y + hivePos.h) {
+                if (gameState.pollen > 0) {
+                    const convertRate = Math.min(gameState.pollen, 20);
+                    gameState.pollen -= convertRate;
+                    gameState.honey += convertRate * 2;
+                    sound.convert();
+                }
+            }
+
+            // Bee AI Movement & Pollen Gathering
+            updateBeesWorld();
+            beesWorld.forEach((bee, idx) => {
+                // Follow player with offset
+                const targetX = player.x + Math.cos(Date.now() / 300 + idx) * (30 + idx * 8);
+                const targetY = player.y + Math.sin(Date.now() / 300 + idx) * (30 + idx * 8);
+
+                bee.x += (targetX - bee.x) * 0.08;
+                bee.y += (targetY - bee.y) * 0.08;
+            });
+
+            // Token Collection
+            tokens.forEach((t, index) => {
+                t.x += t.vx;
+                t.y += t.vy;
+                t.vx *= 0.95;
+                t.vy *= 0.95;
+                t.life--;
+
+                const dist = Math.hypot(t.x - player.x, t.y - player.y);
+                if (dist < 40) {
+                    // Magnetize to player
+                    t.x += (player.x - t.x) * 0.2;
+                    t.y += (player.y - t.y) * 0.2;
+
+                    if (dist < 15) {
+                        if (t.type === 'POLLEN') gameState.pollen += t.value;
+                        if (t.type === 'HONEY') gameState.honey += t.value;
+                        if (t.type === 'ROYAL_JELLY') gameState.royalJelly += t.value;
+                        sound.token();
+                        tokens.splice(index, 1);
+                    }
+                }
+            });
+            tokens = tokens.filter(t => t.life > 0);
+
+            // Regrow Flowers
+            if (Math.random() < 0.3) {
+                const fl = flowers[Math.floor(Math.random() * flowers.length)];
+                if (fl && fl.stage < fl.maxStage) {
+                    fl.stage++;
+                }
+            }
+
+            // Mobs AI
+            mobs.forEach(mob => {
+                const dist = Math.hypot(mob.targetX - mob.x, mob.targetY - mob.y);
+                if (dist < 10) {
+                    mob.targetX = mob.x + (Math.random() - 0.5) * 200;
+                    mob.targetY = mob.y + (Math.random() - 0.5) * 200;
+                } else {
+                    mob.x += ((mob.targetX - mob.x) / dist) * mob.speed;
+                    mob.y += ((mob.targetY - mob.y) / dist) * mob.speed;
+                }
+            });
+
+            // Update UI Counters
+            document.getElementById('honeyVal').innerText = Math.floor(gameState.honey).toLocaleString();
+            document.getElementById('pollenCapacityVal').innerText = `${Math.floor(gameState.pollen)} / ${CONTAINERS[gameState.containerIndex].capacity}`;
+            document.getElementById('pollenBar').style.width = `${Math.min(100, (gameState.pollen / CONTAINERS[gameState.containerIndex].capacity) * 100)}%`;
+            document.getElementById('beesVal').innerText = `${gameState.bees.length} / ${gameState.maxHiveSlots}`;
+            document.getElementById('rjVal').innerText = gameState.royalJelly;
+
+            // Quest HUD update
+            const activeQ = QUESTS[gameState.activeQuestIndex];
+            if (activeQ) {
+                document.getElementById('questText').innerText = `${activeQ.name}: ${Math.floor(gameState.questProgress)} / ${activeQ.target} Pollen`;
+            } else {
+                document.getElementById('questText').innerText = 'All Quests Completed!';
+            }
+        }
+
+        // --- RENDER LOOP (Dynamic Camera & Graphics) ---
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Camera follow player centered
+            const camX = player.x - canvas.width / 2;
+            const camY = player.y - canvas.height / 2;
+
+            ctx.save();
+            ctx.translate(-camX, -camY);
+
+            // Draw Map Background Grid
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < WORLD.width; x += 100) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, WORLD.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < WORLD.height; y += 100) {
+                ctx.beginPath();
+                ctx.moveTo(0, y); ctx.lineTo(WORLD.width, y);
+                ctx.stroke();
+            }
+
+            // Draw Fields & Flowers
+            fields.forEach(field => {
+                ctx.fillStyle = field.color;
+                ctx.globalAlpha = 0.3;
+                ctx.fillRect(field.x, field.y, field.w, field.h);
+                ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.strokeRect(field.x, field.y, field.w, field.h);
+
+                // Field Title & Req
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Inter';
+                ctx.fillText(`${field.name} (${field.reqBees} Bees)`, field.x + 10, field.y - 8);
+            });
+
+            // Draw Flowers
+            flowers.forEach(fl => {
+                if (fl.stage > 0) {
+                    ctx.fillStyle = fl.stage === 3 ? '#facc15' : fl.stage === 2 ? '#fde047' : '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(fl.x, fl.y, fl.stage * 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw Hive
+            ctx.fillStyle = '#d97706';
+            ctx.fillRect(hivePos.x, hivePos.y, hivePos.w, hivePos.h);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Inter';
+            ctx.fillText('🍯 YOUR HIVE (Step here to convert pollen)', hivePos.x + 15, hivePos.y + 55);
+
+            // Draw Tokens
+            tokens.forEach(t => {
+                ctx.fillStyle = t.type === 'HONEY' ? '#fbbf24' : t.type === 'ROYAL_JELLY' ? '#ea580c' : '#fef08a';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            });
+
+            // Draw Mobs
+            mobs.forEach(mob => {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(mob.x, mob.y, mob.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px Inter';
+                ctx.fillText(mob.type, mob.x - 25, mob.y - mob.radius - 5);
+            });
+
+            // Draw Remote Players (Multiplayer Peers)
+            Object.values(remotePlayers).forEach(p => {
+                // Remote Player Body
+                ctx.fillStyle = '#818cf8';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Name Tag & Bees count
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${p.name} (${p.beeCount} 🐝)`, p.x, p.y - 24);
+                ctx.textAlign = 'start';
+            });
+
+            // Draw Local Bees
+            beesWorld.forEach(bee => {
+                const bInfo = BEE_TYPES[bee.type] || BEE_TYPES.BASIC;
+                ctx.fillStyle = bInfo.color;
+                ctx.beginPath();
+                ctx.arc(bee.x, bee.y, 7, 0, Math.PI * 2);
+                ctx.fill();
+                // Bee wings
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath();
+                ctx.arc(bee.x - 4, bee.y - 6, 4, 0, Math.PI * 2);
+                ctx.arc(bee.x + 4, bee.y - 6, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Local Player
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Player Name Tag
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(gameState.name, player.x, player.y - 24);
+            ctx.textAlign = 'start';
+
+            ctx.restore();
+        }
+
+        // --- MAIN GAME LOOP ---
+        function gameLoop(timestamp) {
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize PeerJS on load
+        window.onload = () => {
+            initPeerJS();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
