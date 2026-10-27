@@ -92,6 +92,14 @@
 
         <!-- Action / Toggle Buttons -->
         <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btnShop" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-emerald-400/40 flex items-center gap-2 transition">
+                <i class="fa-solid fa-store"></i>
+                <span class="hidden sm:inline">Shop</span>
+            </button>
+            <button id="btnInventory" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-amber-400/40 flex items-center gap-2 transition">
+                <i class="fa-solid fa-box-open"></i>
+                <span class="hidden sm:inline">Inventory</span>
+            </button>
             <button id="btnMultiplayer" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-indigo-400/40 flex items-center gap-2 transition">
                 <i class="fa-solid fa-globe"></i>
                 <span class="hidden sm:inline">Multiplayer</span>
@@ -103,22 +111,126 @@
         </div>
     </div>
 
-    <!-- BOTTOM MOBILE TOOLBAR & CONTROLS -->
-    <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none z-10">
-        <!-- Quick Action Info -->
-        <div class="bg-slate-900/80 backdrop-blur p-3 rounded-2xl border border-slate-700/60 pointer-events-auto max-w-xs sm:max-w-md hidden sm:block">
-            <div id="questStatus" class="text-xs text-slate-300 font-medium">
-                <i class="fa-solid fa-scroll text-amber-400 mr-1.5"></i>
-                <span id="questText">Talk to Black Bear at spawn to start quests!</span>
+    <!-- SHOP MODAL -->
+    <div id="shopModal" class="fixed inset-0 bg-slate-950/80 modal-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative mx-4 max-h-[85vh] overflow-y-auto">
+            <button id="closeShopModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-emerald-600/20 rounded-2xl flex items-center justify-center border border-emerald-500/40 text-emerald-400 text-2xl">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-white">Beekeeper Shop</h2>
+                    <p class="text-xs text-slate-400">Upgrade tools, backpacks, hive slots, and buy royal jelly!</p>
+                </div>
+            </div>
+
+            <!-- Shop Items Grid -->
+            <div class="space-y-4">
+                <!-- Hive Slot Purchase -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 flex justify-between items-center flex-wrap gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 text-xl border border-amber-500/30">
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-white">Hive Slot (+1 Bee Space)</div>
+                            <div id="hiveSlotCostText" class="text-xs text-amber-300 font-semibold">Cost: 1,000 Honey</div>
+                        </div>
+                    </div>
+                    <button id="buyHiveSlotBtn" class="bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">
+                        Expand Hive
+                    </button>
+                </div>
+
+                <!-- Basic Bee Egg Purchase -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 flex justify-between items-center flex-wrap gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-400 text-xl border border-yellow-500/30">
+                            <i class="fa-solid fa-egg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-white">Basic Bee Egg</div>
+                            <div class="text-xs text-amber-300 font-semibold">Cost: 500 Honey</div>
+                        </div>
+                    </div>
+                    <button id="buyEggBtn" class="bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">
+                        Buy Egg
+                    </button>
+                </div>
+
+                <!-- Royal Jelly Purchase -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 flex justify-between items-center flex-wrap gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 text-xl border border-orange-500/30">
+                            <i class="fa-solid fa-gem"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-white">Royal Jelly</div>
+                            <div class="text-xs text-amber-300 font-semibold">Cost: 2,500 Honey</div>
+                        </div>
+                    </div>
+                    <button id="buyRJBtn" class="bg-orange-500 hover:bg-orange-400 active:scale-95 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">
+                        Buy Royal Jelly
+                    </button>
+                </div>
+
+                <!-- Tool Upgrades -->
+                <div id="shopToolsList" class="space-y-3 pt-2">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Scooper Upgrades</div>
+                    <!-- Dynamic Tool Buttons -->
+                </div>
+
+                <!-- Container Upgrades -->
+                <div id="shopContainersList" class="space-y-3 pt-2">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Backpack Upgrades</div>
+                    <!-- Dynamic Container Buttons -->
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- Action / Swing Button (Mobile Touch Support) -->
-        <div class="pointer-events-auto flex items-center gap-3">
-            <button id="btnSwing" class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400 to-amber-600 active:scale-90 text-slate-950 font-black rounded-full shadow-2xl border-4 border-amber-200 flex flex-col items-center justify-center transition">
-                <i class="fa-solid fa-hand-pointer text-xl sm:text-2xl"></i>
-                <span class="text-[10px] font-black uppercase">Scoop</span>
+    <!-- INVENTORY MODAL -->
+    <div id="inventoryModal" class="fixed inset-0 bg-slate-950/80 modal-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl relative mx-4 max-h-[85vh] overflow-y-auto">
+            <button id="closeInventoryModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
             </button>
+
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-amber-600/20 rounded-2xl flex items-center justify-center border border-amber-500/40 text-amber-400 text-2xl">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-white">Beekeeper Inventory</h2>
+                    <p class="text-xs text-slate-400">View gear, items, and manage/mutate bees</p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Equipment Info -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Tool</div>
+                        <div id="invToolName" class="text-sm font-black text-amber-300 mt-1">Scooper</div>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Backpack</div>
+                        <div id="invContainerName" class="text-sm font-black text-yellow-300 mt-1">Pouch</div>
+                    </div>
+                </div>
+
+                <!-- Swarm Bees Management -->
+                <div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your Hive Swarm</div>
+                    <div id="beeListContainer" class="grid grid-cols-1 gap-2.5">
+                        <!-- Dynamic Bee Items -->
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -719,33 +831,222 @@
             location.reload();
         };
 
-        // --- MULTIPLAYER MODAL BINDINGS ---
-        const mpModal = document.getElementById('multiplayerModal');
-        document.getElementById('btnMultiplayer').onclick = () => mpModal.classList.remove('hidden');
-        document.getElementById('closeMultiplayerModal').onclick = () => mpModal.classList.add('hidden');
+        // --- SHOP & INVENTORY UI BINDINGS ---
+        const shopModal = document.getElementById('shopModal');
+        const inventoryModal = document.getElementById('inventoryModal');
 
-        document.getElementById('playerNameInput').onchange = (e) => {
-            gameState.name = e.target.value || 'Beekeeper';
-        };
+        document.getElementById('btnShop').onclick = () => { renderShop(); shopModal.classList.remove('hidden'); };
+        document.getElementById('closeShopModal').onclick = () => shopModal.classList.add('hidden');
 
-        document.getElementById('btnCopyPeerId').onclick = () => {
-            if (myPeerId) {
-                const el = document.createElement('textarea');
-                el.value = myPeerId;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-                showToast('Copied Peer ID to Clipboard!');
+        document.getElementById('btnInventory').onclick = () => { renderInventory(); inventoryModal.classList.remove('hidden'); };
+        document.getElementById('closeInventoryModal').onclick = () => inventoryModal.classList.add('hidden');
+
+        function getHiveSlotCost() {
+            return Math.floor(1000 * Math.pow(1.8, gameState.maxHiveSlots - 5));
+        }
+
+        function renderShop() {
+            const slotCost = getHiveSlotCost();
+            document.getElementById('hiveSlotCostText').innerText = `Cost: ${slotCost.toLocaleString()} Honey`;
+
+            // Render Tool Upgrades
+            const toolsList = document.getElementById('shopToolsList');
+            toolsList.innerHTML = `<div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Scooper Upgrades</div>`;
+            TOOLS.forEach((tool, index) => {
+                const isOwned = gameState.toolIndex >= index;
+                const canBuy = gameState.honey >= tool.cost && gameState.toolIndex === index - 1;
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center gap-2';
+                itemDiv.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm text-white">${tool.name} ${isOwned ? '✓' : ''}</div>
+                        <div class="text-xs text-amber-300 font-semibold">Cost: ${tool.cost.toLocaleString()} Honey | Power: ${tool.power}</div>
+                    </div>
+                    <button class="px-4 py-2 rounded-xl text-xs font-black transition ${isOwned ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : canBuy ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}" ${!canBuy || isOwned ? 'disabled' : ''}>
+                        ${isOwned ? 'Equipped' : 'Upgrade'}
+                    </button>
+                `;
+                if (canBuy && !isOwned) {
+                    itemDiv.querySelector('button').onclick = () => {
+                        gameState.honey -= tool.cost;
+                        gameState.toolIndex = index;
+                        showToast(`Upgraded to ${tool.name}!`, 'bg-emerald-600');
+                        renderShop();
+                    };
+                }
+                toolsList.appendChild(itemDiv);
+            });
+
+            // Render Container Upgrades
+            const containersList = document.getElementById('shopContainersList');
+            containersList.innerHTML = `<div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Backpack Upgrades</div>`;
+            CONTAINERS.forEach((cont, index) => {
+                const isOwned = gameState.containerIndex >= index;
+                const canBuy = gameState.honey >= cont.cost && gameState.containerIndex === index - 1;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center gap-2';
+                itemDiv.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm text-white">${cont.name} ${isOwned ? '✓' : ''}</div>
+                        <div class="text-xs text-amber-300 font-semibold">Cost: ${cont.cost.toLocaleString()} Honey | Capacity: ${cont.capacity.toLocaleString()}</div>
+                    </div>
+                    <button class="px-4 py-2 rounded-xl text-xs font-black transition ${isOwned ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : canBuy ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}" ${!canBuy || isOwned ? 'disabled' : ''}>
+                        ${isOwned ? 'Equipped' : 'Upgrade'}
+                    </button>
+                `;
+                if (canBuy && !isOwned) {
+                    itemDiv.querySelector('button').onclick = () => {
+                        gameState.honey -= cont.cost;
+                        gameState.containerIndex = index;
+                        showToast(`Upgraded to ${cont.name}!`, 'bg-emerald-600');
+                        renderShop();
+                    };
+                }
+                containersList.appendChild(itemDiv);
+            });
+        }
+
+        // Shop Buy Slot
+        document.getElementById('buyHiveSlotBtn').onclick = () => {
+            const cost = getHiveSlotCost();
+            if (gameState.honey >= cost) {
+                gameState.honey -= cost;
+                gameState.maxHiveSlots++;
+                showToast('Hive Expanded! +1 Bee Slot', 'bg-emerald-600');
+                sound.hatch();
+                renderShop();
+            } else {
+                showToast('Not enough Honey!', 'bg-red-600');
             }
         };
 
-        document.getElementById('btnJoinRoom').onclick = () => {
-            const hostId = document.getElementById('joinRoomInput').value.trim();
-            if (hostId) joinRoom(hostId);
+        // Shop Buy Egg
+        document.getElementById('buyEggBtn').onclick = () => {
+            if (gameState.honey >= 500) {
+                if (gameState.bees.length < gameState.maxHiveSlots) {
+                    gameState.honey -= 500;
+                    gameState.bees.push({ id: Date.now(), type: 'BASIC', level: 1 });
+                    showToast('Hatched Basic Bee!', 'bg-yellow-600');
+                    sound.hatch();
+                } else {
+                    showToast('Hive Slots Full! Upgrade Hive First.', 'bg-red-600');
+                }
+            } else {
+                showToast('Not enough Honey!', 'bg-red-600');
+            }
         };
 
-        document.getElementById('btnSwing').onclick = scoopPollen;
+        // Shop Buy Royal Jelly
+        document.getElementById('buyRJBtn').onclick = () => {
+            if (gameState.honey >= 2500) {
+                gameState.honey -= 2500;
+                gameState.royalJelly++;
+                showToast('Bought 1 Royal Jelly!', 'bg-orange-600');
+                sound.token();
+            } else {
+                showToast('Not enough Honey!', 'bg-red-600');
+            }
+        };
+
+        function renderInventory() {
+            document.getElementById('invToolName').innerText = TOOLS[gameState.toolIndex].name;
+            document.getElementById('invContainerName').innerText = CONTAINERS[gameState.containerIndex].name;
+
+            const list = document.getElementById('beeListContainer');
+            list.innerHTML = '';
+
+            gameState.bees.forEach((bee, idx) => {
+                const info = BEE_TYPES[bee.type] || BEE_TYPES.BASIC;
+                const div = document.createElement('div');
+                div.className = 'bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center gap-2';
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-xs" style="background-color: ${info.color}; color: #000;">
+                            🐝
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-white">${info.name} <span class="text-xs text-amber-400">(${info.rarity})</span></div>
+                            <div class="text-[11px] text-slate-400">Power: ${info.gathering} | Attack: ${info.attack}</div>
+                        </div>
+                    </div>
+                    <button class="bg-orange-600 hover:bg-orange-500 active:scale-95 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
+                        <i class="fa-solid fa-gem"></i> Mutate
+                    </button>
+                `;
+
+                div.querySelector('button').onclick = () => {
+                    if (gameState.royalJelly > 0) {
+                        gameState.royalJelly--;
+                        // Randomly roll new rarity
+                        const roll = Math.random();
+                        let newType = 'BASIC';
+                        if (roll > 0.95) newType = 'MYTHIC';
+                        else if (roll > 0.8) newType = 'LEGENDARY';
+                        else if (roll > 0.5) newType = 'EPIC';
+                        else if (roll > 0.25) newType = 'RARE';
+
+                        bee.type = newType;
+                        sound.hatch();
+                        showToast(`Bee mutated into ${BEE_TYPES[newType].name}!`, 'bg-purple-600');
+                        renderInventory();
+                    } else {
+                        showToast('No Royal Jelly remaining!', 'bg-red-600');
+                    }
+                };
+
+                list.appendChild(div);
+            });
+        }
+
+        // --- MULTIPLAYER MODAL BINDINGS ---
+        const mpModal = document.getElementById('multiplayerModal');
+        if (document.getElementById('btnMultiplayer')) {
+            document.getElementById('btnMultiplayer').onclick = () => mpModal.classList.remove('hidden');
+        }
+        if (document.getElementById('closeMultiplayerModal')) {
+            document.getElementById('closeMultiplayerModal').onclick = () => mpModal.classList.add('hidden');
+        }
+
+        if (document.getElementById('playerNameInput')) {
+            document.getElementById('playerNameInput').onchange = (e) => {
+                gameState.name = e.target.value || 'Beekeeper';
+            };
+        }
+
+        if (document.getElementById('btnCopyPeerId')) {
+            document.getElementById('btnCopyPeerId').onclick = () => {
+                if (myPeerId) {
+                    const el = document.createElement('textarea');
+                    el.value = myPeerId;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    showToast('Copied Peer ID to Clipboard!');
+                }
+            };
+        }
+
+        if (document.getElementById('btnJoinRoom')) {
+            document.getElementById('btnJoinRoom').onclick = () => {
+                const hostId = document.getElementById('joinRoomInput').value.trim();
+                if (hostId) joinRoom(hostId);
+            };
+        }
+
+        // Attach action handlers cleanly with safety checks
+        const swingBtn = document.getElementById('btnSwing');
+        if (swingBtn) {
+            swingBtn.onclick = scoopPollen;
+        }
+
+        // Spacebar or Click to scoop pollen on canvas
+        canvas.addEventListener('click', () => scoopPollen());
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space') scoopPollen();
+        });
 
         // --- UPDATE LOOP ---
         let lastTime = performance.now();
@@ -856,18 +1157,21 @@
             });
 
             // Update UI Counters
-            document.getElementById('honeyVal').innerText = Math.floor(gameState.honey).toLocaleString();
-            document.getElementById('pollenCapacityVal').innerText = `${Math.floor(gameState.pollen)} / ${CONTAINERS[gameState.containerIndex].capacity}`;
-            document.getElementById('pollenBar').style.width = `${Math.min(100, (gameState.pollen / CONTAINERS[gameState.containerIndex].capacity) * 100)}%`;
-            document.getElementById('beesVal').innerText = `${gameState.bees.length} / ${gameState.maxHiveSlots}`;
-            document.getElementById('rjVal').innerText = gameState.royalJelly;
+            if (document.getElementById('honeyVal')) document.getElementById('honeyVal').innerText = Math.floor(gameState.honey).toLocaleString();
+            if (document.getElementById('pollenCapacityVal')) document.getElementById('pollenCapacityVal').innerText = `${Math.floor(gameState.pollen)} / ${CONTAINERS[gameState.containerIndex].capacity}`;
+            if (document.getElementById('pollenBar')) document.getElementById('pollenBar').style.width = `${Math.min(100, (gameState.pollen / CONTAINERS[gameState.containerIndex].capacity) * 100)}%`;
+            if (document.getElementById('beesVal')) document.getElementById('beesVal').innerText = `${gameState.bees.length} / ${gameState.maxHiveSlots}`;
+            if (document.getElementById('rjVal')) document.getElementById('rjVal').innerText = gameState.royalJelly;
 
-            // Quest HUD update
-            const activeQ = QUESTS[gameState.activeQuestIndex];
-            if (activeQ) {
-                document.getElementById('questText').innerText = `${activeQ.name}: ${Math.floor(gameState.questProgress)} / ${activeQ.target} Pollen`;
-            } else {
-                document.getElementById('questText').innerText = 'All Quests Completed!';
+            // Quest HUD update (if quest text element exists)
+            const questEl = document.getElementById('questText');
+            if (questEl) {
+                const activeQ = QUESTS[gameState.activeQuestIndex];
+                if (activeQ) {
+                    questEl.innerText = `${activeQ.name}: ${Math.floor(gameState.questProgress)} / ${activeQ.target} Pollen`;
+                } else {
+                    questEl.innerText = 'All Quests Completed!';
+                }
             }
         }
 
