@@ -617,7 +617,31 @@
             }
 
             try {
-                peer = new Peer();
+                // Global error trap for iframe WebSocket security restrictions
+                window.addEventListener('unhandledrejection', function(event) {
+                    if (event.reason && (event.reason.name === 'SecurityError' || String(event.reason).includes('WebSocket'))) {
+                        event.preventDefault();
+                        console.warn('Iframe sandbox prevented WebSocket signaling:', event.reason);
+                        const display = document.getElementById('myPeerIdDisplay');
+                        if (display) display.innerText = 'Multiplayer Restricted in Canvas Iframe';
+                        const status = document.getElementById('statusText');
+                        if (status) {
+                            status.innerText = 'Offline Mode (Sandbox Restricted - Deploy to Vercel to Enable)';
+                            status.className = 'text-amber-400';
+                        }
+                    }
+                });
+
+                // Initialize Peer cleanly with standard PeerJS cloud settings & ICE servers
+                peer = new Peer(undefined, {
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' }
+                        ]
+                    },
+                    debug: 0
+                });
 
                 peer.on('open', id => {
                     myPeerId = id;
@@ -631,11 +655,33 @@
                 });
 
                 peer.on('error', err => {
-                    showToast('Multiplayer connection error', 'bg-red-600');
+                    console.warn('PeerJS Non-Fatal Error:', err);
+                    const statusText = document.getElementById('statusText');
+                    const peerDisplay = document.getElementById('myPeerIdDisplay');
+                    
+                    if (statusText) {
+                        statusText.innerText = 'Status: Sandbox Restricted / Reconnecting...';
+                        statusText.className = 'text-amber-400';
+                    }
+                    if (peerDisplay && peerDisplay.innerText.includes('Generating')) {
+                        peerDisplay.innerText = 'WebRTC Restricted in Editor Preview';
+                    }
+                });
+
+                peer.on('disconnected', () => {
+                    const status = document.getElementById('statusText');
+                    if (status) {
+                        status.innerText = 'Disconnected. Reconnecting...';
+                        status.className = 'text-amber-400';
+                    }
+                    if (peer && !peer.destroyed) {
+                        try { peer.reconnect(); } catch(e) {}
+                    }
                 });
             } catch (err) {
                 console.warn('PeerJS Initialization failed:', err);
-                document.getElementById('statusText').innerText = 'Offline / PeerJS Failed';
+                const status = document.getElementById('statusText');
+                if (status) status.innerText = 'Offline / PeerJS Restricted';
             }
         }
 
@@ -645,11 +691,13 @@
             conn.on('open', () => {
                 showToast(`Player Connected: ${conn.peer.substring(0, 6)}...`, 'bg-indigo-600');
                 sound.hatch();
+                document.getElementById('statusText').innerText = `Connected (${Object.keys(peerConnections).length} peers)`;
+                document.getElementById('statusText').className = 'text-emerald-400';
             });
 
             conn.on('data', data => {
                 // Receive remote player state update
-                if (data.type === 'PLAYER_SYNC') {
+                if (data && data.type === 'PLAYER_SYNC') {
                     remotePlayers[data.id] = data.payload;
                 }
             });
@@ -658,21 +706,42 @@
                 delete remotePlayers[conn.peer];
                 delete peerConnections[conn.peer];
                 showToast('Player Disconnected', 'bg-slate-700');
+                const connCount = Object.keys(peerConnections).length;
+                if (connCount > 0) {
+                    document.getElementById('statusText').innerText = `Connected (${connCount} peers)`;
+                } else {
+                    document.getElementById('statusText').innerText = 'Online / Ready to Host';
+                }
+            });
+
+            conn.on('error', err => {
+                console.error('DataConnection Error:', err);
             });
         }
 
         function joinRoom(hostId) {
-            if (!peer || !hostId) return;
-            document.getElementById('statusText').innerText = 'Connecting...';
+            if (!peer || !hostId) {
+                showToast('Please enter a valid Host Peer ID', 'bg-red-600');
+                return;
+            }
+            if (hostId === myPeerId) {
+                showToast('Cannot join your own room ID!', 'bg-amber-600');
+                return;
+            }
+            
+            document.getElementById('statusText').innerText = 'Connecting to host...';
             document.getElementById('statusText').className = 'text-amber-400';
 
-            const conn = peer.connect(hostId);
-            conn.on('open', () => {
-                document.getElementById('statusText').innerText = 'Connected to Host!';
-                document.getElementById('statusText').className = 'text-emerald-400';
-                setupConnection(conn);
-                showToast('Successfully joined room!', 'bg-emerald-600');
+            const conn = peer.connect(hostId, {
+                reliable: true
             });
+
+            if (!conn) {
+                showToast('Failed to initiate connection', 'bg-red-600');
+                return;
+            }
+
+            setupConnection(conn);
         }
 
         function broadcastPlayerSync() {
@@ -690,8 +759,10 @@
                 }
             };
             Object.values(peerConnections).forEach(conn => {
-                if (conn.open) {
-                    conn.send(payload);
+                if (conn && conn.open) {
+                    try {
+                        conn.send(payload);
+                    } catch(e) {}
                 }
             });
         }
