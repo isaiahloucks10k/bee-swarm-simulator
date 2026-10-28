@@ -678,6 +678,20 @@
                         try { peer.reconnect(); } catch(e) {}
                     }
                 });
+
+                // Cleanly close connections and peer on browser tab/window unload
+                const handleUnload = () => {
+                    Object.values(peerConnections).forEach(conn => {
+                        if (conn && conn.open) {
+                            try { conn.close(); } catch(e) {}
+                        }
+                    });
+                    if (peer && !peer.destroyed) {
+                        try { peer.destroy(); } catch(e) {}
+                    }
+                };
+                window.addEventListener('beforeunload', handleUnload);
+                window.addEventListener('unload', handleUnload);
             } catch (err) {
                 console.warn('PeerJS Initialization failed:', err);
                 const status = document.getElementById('statusText');
