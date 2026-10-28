@@ -244,7 +244,7 @@
                 </div>
                 <div>
                     <h2 class="text-xl font-black text-white">PeerJS WebRTC Multiplayer</h2>
-                    <p class="text-xs text-slate-400">Play together across devices directly P2P!</p>
+                    <p class="text-xs text-slate-400">Play together across devices directly P2P (TURN Relay Enabled)!</p>
                 </div>
             </div>
 
@@ -419,7 +419,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Resize Canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -427,7 +426,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Bee Rarities & Stats
         const BEE_TYPES = {
             BASIC: { name: 'Basic Bee', color: '#f59e0b', rarity: 'Common', gathering: 1, attack: 2 },
             RARE: { name: 'Bubble Bee', color: '#3b82f6', rarity: 'Rare', gathering: 1.5, attack: 3 },
@@ -436,7 +434,6 @@
             MYTHIC: { name: 'Spicy Bee', color: '#a855f7', rarity: 'Mythic', gathering: 5, attack: 12 }
         };
 
-        // Equipment Definitions
         const TOOLS = [
             { id: 'SCOOPER', name: 'Scooper', cost: 0, power: 1, radius: 20 },
             { id: 'CLIPPER', name: 'Clippers', cost: 1000, power: 3, radius: 30 },
@@ -451,7 +448,6 @@
             { id: 'PRO', name: 'Pro Container', cost: 250000, capacity: 15000 }
         ];
 
-        // --- GAME STATE ---
         let gameState = {
             honey: 0,
             pollen: 0,
@@ -470,13 +466,11 @@
             name: 'Beekeeper'
         };
 
-        // Initialize First Bees
         gameState.bees = [
             { id: 1, type: 'BASIC', level: 1 },
             { id: 2, type: 'BASIC', level: 1 }
         ];
 
-        // Save / Load System
         function saveGame() {
             try {
                 localStorage.setItem('bss_ultimate_save', JSON.stringify(gameState));
@@ -496,7 +490,6 @@
         loadGame();
         setInterval(saveGame, 10000);
 
-        // --- MAP ENTITIES & FIELDS ---
         const fields = [
             { id: 'dandelion', name: 'Dandelion Field', x: 200, y: 300, w: 350, h: 250, color: '#fef08a', reqBees: 0 },
             { id: 'clover', name: 'Clover Field', x: 650, y: 300, w: 350, h: 250, color: '#86efac', reqBees: 0 },
@@ -505,10 +498,8 @@
             { id: 'pine', name: 'Pine Tree Forest', x: 1100, y: 300, w: 450, h: 350, color: '#6ee7b7', reqBees: 15 }
         ];
 
-        // Hive Position
         const hivePos = { x: 400, y: 150, w: 280, h: 100 };
 
-        // Generate Field Flowers
         let flowers = [];
         fields.forEach(field => {
             const cols = Math.floor(field.w / 25);
@@ -526,7 +517,6 @@
             }
         });
 
-        // Drop Tokens Container
         let tokens = [];
 
         function spawnToken(x, y, type = 'POLLEN', value = 10) {
@@ -538,13 +528,11 @@
             });
         }
 
-        // Mobs / Enemies
         let mobs = [
             { id: 1, type: 'Rhinoceros Beetle', x: 750, y: 750, radius: 20, hp: 50, maxHp: 50, speed: 1.2, targetX: 750, targetY: 750 },
             { id: 2, type: 'Ladybug', x: 400, y: 750, radius: 18, hp: 30, maxHp: 30, speed: 1.5, targetX: 400, targetY: 750 }
         ];
 
-        // --- LOCAL PLAYER & CONTROLS ---
         const player = {
             x: gameState.x || 400,
             y: gameState.y || 400,
@@ -567,7 +555,6 @@
             keys[e.code] = false;
         });
 
-        // --- BEES SYSTEM AI ---
         let beesWorld = [];
 
         function updateBeesWorld() {
@@ -594,11 +581,11 @@
             });
         }
 
-        // --- MULTIPLAYER (PeerJS Integration) ---
+        // --- MULTIPLAYER (PeerJS + Metered TURN Relay Integration) ---
         let peer = null;
         let myPeerId = '';
         let peerConnections = {};
-        let remotePlayers = {}; // { peerId: { x, y, name, beeCount, toolIndex, isSwinging } }
+        let remotePlayers = {};
 
         function updateMultiplayerStatus(msg, colorClass = 'text-amber-400') {
             const statusEl = document.getElementById('statusText');
@@ -616,7 +603,6 @@
             }
 
             try {
-                // Global error trap for iframe WebSocket security restrictions
                 window.addEventListener('unhandledrejection', function(event) {
                     if (event.reason && (event.reason.name === 'SecurityError' || String(event.reason).includes('WebSocket'))) {
                         event.preventDefault();
@@ -627,17 +613,33 @@
                     }
                 });
 
-                // Robust WebRTC ICE Configurations with multi-region public STUN endpoints
+                // Configured with Metered TURN Relays for strict NAT/Firewall traversal
                 peer = new Peer(undefined, {
                     config: {
                         iceServers: [
                             { urls: 'stun:stun.l.google.com:19302' },
                             { urls: 'stun1.l.google.com:19302' },
-                            { urls: 'stun2.l.google.com:19302' },
-                            { urls: 'stun3.l.google.com:19302' },
-                            { urls: 'stun4.l.google.com:19302' },
-                            { urls: 'stun:stun.nextcloud.com:443' },
-                            { urls: 'stun:stun.cloudflare.com:3478' }
+                            { urls: 'stun:global.stun.metered.ca:3478' },
+                            { 
+                                urls: 'turn:global.turn.metered.ca:80',
+                                username: 'd31f04e230fca2b79e071790',
+                                credential: 'ZWcBYap7dzs35P9E'
+                            },
+                            { 
+                                urls: 'turn:global.turn.metered.ca:443',
+                                username: 'd31f04e230fca2b79e071790',
+                                credential: 'ZWcBYap7dzs35P9E'
+                            },
+                            { 
+                                urls: 'turn:global.turn.metered.ca:3478',
+                                username: 'd31f04e230fca2b79e071790',
+                                credential: 'ZWcBYap7dzs35P9E'
+                            },
+                            { 
+                                urls: 'turn:global.turn.metered.ca:3478?transport=tcp',
+                                username: 'd31f04e230fca2b79e071790',
+                                credential: 'ZWcBYap7dzs35P9E'
+                            }
                         ]
                     },
                     debug: 1
@@ -646,7 +648,7 @@
                 peer.on('open', id => {
                     myPeerId = id;
                     document.getElementById('myPeerIdDisplay').innerText = id;
-                    updateMultiplayerStatus('Online / Ready to Host', 'text-emerald-400');
+                    updateMultiplayerStatus('Online (TURN Relay Active) / Ready to Host', 'text-emerald-400');
                 });
 
                 peer.on('connection', conn => {
@@ -699,7 +701,6 @@
                 const count = Object.keys(peerConnections).length;
                 updateMultiplayerStatus(`Connected (${count} peer${count > 1 ? 's' : ''})`, 'text-emerald-400');
 
-                // Immediate handshake packet exchange
                 const localData = {
                     x: player.x,
                     y: player.y,
@@ -723,7 +724,6 @@
                     if (data.id && data.id !== myPeerId) {
                         remotePlayers[data.id] = data.payload;
 
-                        // Bidirectional Relay: Host relays guest positions to all other connected peers (Mesh)
                         if (isHost) {
                             Object.entries(peerConnections).forEach(([peerId, otherConn]) => {
                                 if (peerId !== data.id && otherConn && otherConn.open) {
@@ -735,7 +735,6 @@
                 }
             });
 
-            // ICE connection monitoring for WebRTC state changes
             if (conn.peerConnection) {
                 conn.peerConnection.oniceconnectionstatechange = () => {
                     const state = conn.peerConnection ? conn.peerConnection.iceConnectionState : '';
@@ -780,7 +779,7 @@
                 return;
             }
 
-            updateMultiplayerStatus('Connecting to host...', 'text-amber-400');
+            updateMultiplayerStatus('Connecting to host via TURN relay...', 'text-amber-400');
 
             const conn = peer.connect(hostId, { reliable: true });
 
@@ -814,10 +813,8 @@
             });
         }
 
-        // Broadcast 20 times per second
         setInterval(broadcastPlayerSync, 50);
 
-        // --- HARVESTING & SCOOPING ACTION ---
         function scoopPollen() {
             sound.scoop();
             player.isSwinging = true;
@@ -826,7 +823,6 @@
             const tool = TOOLS[gameState.toolIndex];
             const cap = CONTAINERS[gameState.containerIndex].capacity;
 
-            // Harvest nearby flowers
             flowers.forEach(fl => {
                 const dist = Math.hypot(fl.x - player.x, fl.y - player.y);
                 if (dist < tool.radius + 15 && fl.stage > 0) {
@@ -844,7 +840,6 @@
                 }
             });
 
-            // Attack Mobs
             mobs.forEach(mob => {
                 const dist = Math.hypot(mob.x - player.x, mob.y - player.y);
                 if (dist < tool.radius + mob.radius) {
@@ -864,7 +859,6 @@
             checkQuestProgress('HARVEST', tool.power);
         }
 
-        // --- QUEST SYSTEM ---
         const QUESTS = [
             { name: 'First Harvest', target: 200, type: 'HARVEST', rewardHoney: 500, rewardRJ: 1 },
             { name: 'Honey Collector', target: 2000, type: 'HARVEST', rewardHoney: 2500, rewardRJ: 3 },
@@ -886,7 +880,6 @@
             }
         }
 
-        // --- ADMIN PANEL FUNCTIONS ---
         function toggleAdminModal() {
             const modal = document.getElementById('adminModal');
             modal.classList.toggle('hidden');
@@ -944,7 +937,6 @@
             location.reload();
         };
 
-        // --- SHOP & INVENTORY UI BINDINGS ---
         const shopModal = document.getElementById('shopModal');
         const inventoryModal = document.getElementById('inventoryModal');
 
@@ -1107,7 +1099,6 @@
             });
         }
 
-        // --- MULTIPLAYER MODAL BINDINGS ---
         const mpModal = document.getElementById('multiplayerModal');
         if (document.getElementById('btnMultiplayer')) {
             document.getElementById('btnMultiplayer').onclick = () => mpModal.classList.remove('hidden');
@@ -1148,7 +1139,6 @@
             if (e.code === 'Space') scoopPollen();
         });
 
-        // --- UPDATE LOOP ---
         let lastTime = performance.now();
 
         function update(dt) {
@@ -1169,7 +1159,6 @@
             let nextX = player.x + dx * speed;
             let nextY = player.y + dy * speed;
 
-            // Bee Gate Barriers Check
             if (!gameState.unlockedGates) {
                 fields.forEach(field => {
                     if (field.reqBees > gameState.bees.length) {
@@ -1186,7 +1175,6 @@
             player.x = Math.max(20, Math.min(WORLD.width - 20, nextX));
             player.y = Math.max(20, Math.min(WORLD.height - 20, nextY));
 
-            // Hive Pollen Conversion Zone
             if (player.x > hivePos.x && player.x < hivePos.x + hivePos.w &&
                 player.y > hivePos.y && player.y < hivePos.y + hivePos.h) {
                 if (gameState.pollen > 0) {
@@ -1197,7 +1185,6 @@
                 }
             }
 
-            // Bee AI Movement & Pollen Gathering
             updateBeesWorld();
             beesWorld.forEach((bee, idx) => {
                 const targetX = player.x + Math.cos(Date.now() / 300 + idx) * (30 + idx * 8);
@@ -1207,7 +1194,6 @@
                 bee.y += (targetY - bee.y) * 0.08;
             });
 
-            // Token Collection
             tokens.forEach((t, index) => {
                 t.x += t.vx;
                 t.y += t.vy;
@@ -1231,7 +1217,6 @@
             });
             tokens = tokens.filter(t => t.life > 0);
 
-            // Regrow Flowers
             if (Math.random() < 0.3) {
                 const fl = flowers[Math.floor(Math.random() * flowers.length)];
                 if (fl && fl.stage < fl.maxStage) {
@@ -1239,7 +1224,6 @@
                 }
             }
 
-            // Mobs AI
             mobs.forEach(mob => {
                 const dist = Math.hypot(mob.targetX - mob.x, mob.targetY - mob.y);
                 if (dist < 10) {
@@ -1251,7 +1235,6 @@
                 }
             });
 
-            // Update UI Counters
             if (document.getElementById('honeyVal')) document.getElementById('honeyVal').innerText = Math.floor(gameState.honey).toLocaleString();
             if (document.getElementById('pollenCapacityVal')) document.getElementById('pollenCapacityVal').innerText = `${Math.floor(gameState.pollen)} / ${CONTAINERS[gameState.containerIndex].capacity}`;
             if (document.getElementById('pollenBar')) document.getElementById('pollenBar').style.width = `${Math.min(100, (gameState.pollen / CONTAINERS[gameState.containerIndex].capacity) * 100)}%`;
@@ -1259,7 +1242,6 @@
             if (document.getElementById('rjVal')) document.getElementById('rjVal').innerText = gameState.royalJelly;
         }
 
-        // --- RENDER LOOP ---
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1269,7 +1251,6 @@
             ctx.save();
             ctx.translate(-camX, -camY);
 
-            // Background Grid
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
@@ -1286,7 +1267,6 @@
                 ctx.stroke();
             }
 
-            // Fields
             fields.forEach(field => {
                 ctx.fillStyle = field.color;
                 ctx.globalAlpha = 0.3;
@@ -1300,7 +1280,6 @@
                 ctx.fillText(`${field.name} (${field.reqBees} Bees)`, field.x + 10, field.y - 8);
             });
 
-            // Flowers
             flowers.forEach(fl => {
                 if (fl.stage > 0) {
                     ctx.fillStyle = fl.stage === 3 ? '#facc15' : fl.stage === 2 ? '#fde047' : '#fef08a';
@@ -1310,14 +1289,12 @@
                 }
             });
 
-            // Hive
             ctx.fillStyle = '#d97706';
             ctx.fillRect(hivePos.x, hivePos.y, hivePos.w, hivePos.h);
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 16px Inter';
             ctx.fillText('🍯 YOUR HIVE (Step here to convert pollen)', hivePos.x + 15, hivePos.y + 55);
 
-            // Tokens
             tokens.forEach(t => {
                 ctx.fillStyle = t.type === 'HONEY' ? '#fbbf24' : t.type === 'ROYAL_JELLY' ? '#ea580c' : '#fef08a';
                 ctx.beginPath();
@@ -1327,7 +1304,6 @@
                 ctx.stroke();
             });
 
-            // Mobs
             mobs.forEach(mob => {
                 ctx.fillStyle = '#ef4444';
                 ctx.beginPath();
@@ -1338,7 +1314,6 @@
                 ctx.fillText(mob.type, mob.x - 25, mob.y - mob.radius - 5);
             });
 
-            // Remote Players
             Object.values(remotePlayers).forEach(p => {
                 ctx.fillStyle = '#818cf8';
                 ctx.beginPath();
@@ -1352,7 +1327,6 @@
                 ctx.textAlign = 'start';
             });
 
-            // Local Bees
             beesWorld.forEach(bee => {
                 const bInfo = BEE_TYPES[bee.type] || BEE_TYPES.BASIC;
                 ctx.fillStyle = bInfo.color;
@@ -1366,7 +1340,6 @@
                 ctx.fill();
             });
 
-            // Local Player
             ctx.fillStyle = '#f59e0b';
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
@@ -1375,7 +1348,6 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // Player Name Tag
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px Inter';
             ctx.textAlign = 'center';
@@ -1385,7 +1357,6 @@
             ctx.restore();
         }
 
-        // --- MAIN GAME LOOP ---
         function gameLoop(timestamp) {
             const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
