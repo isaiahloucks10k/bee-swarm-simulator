@@ -181,13 +181,11 @@
                 <!-- Tool Upgrades -->
                 <div id="shopToolsList" class="space-y-3 pt-2">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Scooper Upgrades</div>
-                    <!-- Dynamic Tool Buttons -->
                 </div>
 
                 <!-- Container Upgrades -->
                 <div id="shopContainersList" class="space-y-3 pt-2">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Backpack Upgrades</div>
-                    <!-- Dynamic Container Buttons -->
                 </div>
             </div>
         </div>
@@ -227,7 +225,6 @@
                 <div>
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your Hive Swarm</div>
                     <div id="beeListContainer" class="grid grid-cols-1 gap-2.5">
-                        <!-- Dynamic Bee Items -->
                     </div>
                 </div>
             </div>
@@ -247,7 +244,7 @@
                 </div>
                 <div>
                     <h2 class="text-xl font-black text-white">PeerJS WebRTC Multiplayer</h2>
-                    <p class="text-xs text-slate-400">Play together across browsers directly P2P!</p>
+                    <p class="text-xs text-slate-400">Play together across devices directly P2P!</p>
                 </div>
             </div>
 
@@ -266,7 +263,7 @@
                         <i class="fa-solid fa-copy"></i> Copy
                     </button>
                 </div>
-                <p class="text-[11px] text-slate-400">Share your ID with friends to let them join your hive field!</p>
+                <p class="text-[11px] text-slate-400">Share your ID with friends on other devices to let them join!</p>
             </div>
 
             <!-- Join Session -->
@@ -511,9 +508,6 @@
         // Hive Position
         const hivePos = { x: 400, y: 150, w: 280, h: 100 };
 
-        // Bear Quest NPC
-        const bearNpc = { x: 300, y: 200, radius: 25, name: 'Black Bear' };
-
         // Generate Field Flowers
         let flowers = [];
         fields.forEach(field => {
@@ -525,7 +519,7 @@
                         x: field.x + c * 25 + 12.5,
                         y: field.y + r * 25 + 12.5,
                         fieldId: field.id,
-                        stage: 3, // 1 to 3 pollen size
+                        stage: 3,
                         maxStage: 3
                     });
                 }
@@ -540,7 +534,7 @@
                 x, y, type, value,
                 vx: (Math.random() - 0.5) * 3,
                 vy: (Math.random() - 0.5) * 3,
-                life: 600 // 10s
+                life: 600
             });
         }
 
@@ -577,7 +571,6 @@
         let beesWorld = [];
 
         function updateBeesWorld() {
-            // Keep beesWorld synchronized with gameState.bees
             while (beesWorld.length < gameState.bees.length) {
                 const bData = gameState.bees[beesWorld.length];
                 beesWorld.push({
@@ -594,7 +587,6 @@
             if (beesWorld.length > gameState.bees.length) {
                 beesWorld.length = gameState.bees.length;
             }
-            // Update type if mutated
             beesWorld.forEach((bw, i) => {
                 if (gameState.bees[i]) {
                     bw.type = gameState.bees[i].type;
@@ -608,11 +600,18 @@
         let peerConnections = {};
         let remotePlayers = {}; // { peerId: { x, y, name, beeCount, toolIndex, isSwinging } }
 
+        function updateMultiplayerStatus(msg, colorClass = 'text-amber-400') {
+            const statusEl = document.getElementById('statusText');
+            if (statusEl) {
+                statusEl.innerText = msg;
+                statusEl.className = colorClass;
+            }
+        }
+
         function initPeerJS() {
             if (typeof Peer === 'undefined') {
                 document.getElementById('myPeerIdDisplay').innerText = 'Multiplayer CDN Unavailable (Offline Mode)';
-                document.getElementById('statusText').innerText = 'Offline Mode (PeerJS CDN Blocked/Offline)';
-                document.getElementById('statusText').className = 'text-amber-400';
+                updateMultiplayerStatus('Offline Mode (PeerJS CDN Blocked/Offline)', 'text-amber-400');
                 return;
             }
 
@@ -624,62 +623,55 @@
                         console.warn('Iframe sandbox prevented WebSocket signaling:', event.reason);
                         const display = document.getElementById('myPeerIdDisplay');
                         if (display) display.innerText = 'Multiplayer Restricted in Canvas Iframe';
-                        const status = document.getElementById('statusText');
-                        if (status) {
-                            status.innerText = 'Offline Mode (Sandbox Restricted - Deploy to Vercel to Enable)';
-                            status.className = 'text-amber-400';
-                        }
+                        updateMultiplayerStatus('Offline Mode (Sandbox Restricted - Deploy to Vercel/Netlify to Enable)', 'text-amber-400');
                     }
                 });
 
-                // Initialize Peer cleanly with standard PeerJS cloud settings & ICE servers
+                // Robust WebRTC ICE Configurations with multi-region public STUN endpoints
                 peer = new Peer(undefined, {
                     config: {
                         iceServers: [
                             { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
+                            { urls: 'stun1.l.google.com:19302' },
+                            { urls: 'stun2.l.google.com:19302' },
+                            { urls: 'stun3.l.google.com:19302' },
+                            { urls: 'stun4.l.google.com:19302' },
+                            { urls: 'stun:stun.nextcloud.com:443' },
+                            { urls: 'stun:stun.cloudflare.com:3478' }
                         ]
                     },
-                    debug: 0
+                    debug: 1
                 });
 
                 peer.on('open', id => {
                     myPeerId = id;
                     document.getElementById('myPeerIdDisplay').innerText = id;
-                    document.getElementById('statusText').innerText = 'Online / Ready to Host';
-                    document.getElementById('statusText').className = 'text-emerald-400';
+                    updateMultiplayerStatus('Online / Ready to Host', 'text-emerald-400');
                 });
 
                 peer.on('connection', conn => {
-                    setupConnection(conn);
+                    setupConnection(conn, true);
                 });
 
                 peer.on('error', err => {
-                    console.warn('PeerJS Non-Fatal Error:', err);
-                    const statusText = document.getElementById('statusText');
-                    const peerDisplay = document.getElementById('myPeerIdDisplay');
-                    
-                    if (statusText) {
-                        statusText.innerText = 'Status: Sandbox Restricted / Reconnecting...';
-                        statusText.className = 'text-amber-400';
-                    }
-                    if (peerDisplay && peerDisplay.innerText.includes('Generating')) {
-                        peerDisplay.innerText = 'WebRTC Restricted in Editor Preview';
+                    console.warn('PeerJS Error:', err);
+                    if (err.type === 'peer-unavailable') {
+                        showToast('Host Peer ID not found. Check ID and try again.', 'bg-red-600');
+                        updateMultiplayerStatus('Connection Failed (Peer Not Found)', 'text-red-400');
+                    } else if (err.type === 'network' || err.type === 'webrtc') {
+                        updateMultiplayerStatus('Connection Failed (STUN/NAT Blocked)', 'text-red-400');
+                    } else {
+                        updateMultiplayerStatus('Status: Sandbox/Network Restricted', 'text-amber-400');
                     }
                 });
 
                 peer.on('disconnected', () => {
-                    const status = document.getElementById('statusText');
-                    if (status) {
-                        status.innerText = 'Disconnected. Reconnecting...';
-                        status.className = 'text-amber-400';
-                    }
+                    updateMultiplayerStatus('Disconnected. Reconnecting...', 'text-amber-400');
                     if (peer && !peer.destroyed) {
                         try { peer.reconnect(); } catch(e) {}
                     }
                 });
 
-                // Cleanly close connections and peer on browser tab/window unload
                 const handleUnload = () => {
                     Object.values(peerConnections).forEach(conn => {
                         if (conn && conn.open) {
@@ -694,27 +686,71 @@
                 window.addEventListener('unload', handleUnload);
             } catch (err) {
                 console.warn('PeerJS Initialization failed:', err);
-                const status = document.getElementById('statusText');
-                if (status) status.innerText = 'Offline / PeerJS Restricted';
+                updateMultiplayerStatus('Offline / PeerJS Restricted', 'text-amber-400');
             }
         }
 
-        function setupConnection(conn) {
+        function setupConnection(conn, isHost = false) {
             peerConnections[conn.peer] = conn;
 
             conn.on('open', () => {
                 showToast(`Player Connected: ${conn.peer.substring(0, 6)}...`, 'bg-indigo-600');
                 sound.hatch();
-                document.getElementById('statusText').innerText = `Connected (${Object.keys(peerConnections).length} peers)`;
-                document.getElementById('statusText').className = 'text-emerald-400';
+                const count = Object.keys(peerConnections).length;
+                updateMultiplayerStatus(`Connected (${count} peer${count > 1 ? 's' : ''})`, 'text-emerald-400');
+
+                // Immediate handshake packet exchange
+                const localData = {
+                    x: player.x,
+                    y: player.y,
+                    name: gameState.name,
+                    beeCount: gameState.bees.length,
+                    toolIndex: gameState.toolIndex,
+                    isSwinging: player.isSwinging
+                };
+
+                if (isHost) {
+                    conn.send({ type: 'HOST_WELCOME', id: myPeerId, payload: localData });
+                } else {
+                    conn.send({ type: 'GUEST_JOIN', id: myPeerId, payload: localData });
+                }
             });
 
             conn.on('data', data => {
-                // Receive remote player state update
-                if (data && data.type === 'PLAYER_SYNC') {
-                    remotePlayers[data.id] = data.payload;
+                if (!data || !data.type) return;
+
+                if (data.type === 'PLAYER_SYNC' || data.type === 'HOST_WELCOME' || data.type === 'GUEST_JOIN') {
+                    if (data.id && data.id !== myPeerId) {
+                        remotePlayers[data.id] = data.payload;
+
+                        // Bidirectional Relay: Host relays guest positions to all other connected peers (Mesh)
+                        if (isHost) {
+                            Object.entries(peerConnections).forEach(([peerId, otherConn]) => {
+                                if (peerId !== data.id && otherConn && otherConn.open) {
+                                    try { otherConn.send(data); } catch(e) {}
+                                }
+                            });
+                        }
+                    }
                 }
             });
+
+            // ICE connection monitoring for WebRTC state changes
+            if (conn.peerConnection) {
+                conn.peerConnection.oniceconnectionstatechange = () => {
+                    const state = conn.peerConnection ? conn.peerConnection.iceConnectionState : '';
+                    if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+                        delete remotePlayers[conn.peer];
+                        delete peerConnections[conn.peer];
+                        const remaining = Object.keys(peerConnections).length;
+                        if (remaining > 0) {
+                            updateMultiplayerStatus(`Connected (${remaining} peer${remaining > 1 ? 's' : ''})`, 'text-emerald-400');
+                        } else {
+                            updateMultiplayerStatus('Online / Ready to Host', 'text-emerald-400');
+                        }
+                    }
+                };
+            }
 
             conn.on('close', () => {
                 delete remotePlayers[conn.peer];
@@ -722,14 +758,15 @@
                 showToast('Player Disconnected', 'bg-slate-700');
                 const connCount = Object.keys(peerConnections).length;
                 if (connCount > 0) {
-                    document.getElementById('statusText').innerText = `Connected (${connCount} peers)`;
+                    updateMultiplayerStatus(`Connected (${connCount} peer${connCount > 1 ? 's' : ''})`, 'text-emerald-400');
                 } else {
-                    document.getElementById('statusText').innerText = 'Online / Ready to Host';
+                    updateMultiplayerStatus('Online / Ready to Host', 'text-emerald-400');
                 }
             });
 
             conn.on('error', err => {
                 console.error('DataConnection Error:', err);
+                updateMultiplayerStatus('Data Connection Error', 'text-red-400');
             });
         }
 
@@ -742,20 +779,18 @@
                 showToast('Cannot join your own room ID!', 'bg-amber-600');
                 return;
             }
-            
-            document.getElementById('statusText').innerText = 'Connecting to host...';
-            document.getElementById('statusText').className = 'text-amber-400';
 
-            const conn = peer.connect(hostId, {
-                reliable: true
-            });
+            updateMultiplayerStatus('Connecting to host...', 'text-amber-400');
+
+            const conn = peer.connect(hostId, { reliable: true });
 
             if (!conn) {
                 showToast('Failed to initiate connection', 'bg-red-600');
+                updateMultiplayerStatus('Connection Failed', 'text-red-400');
                 return;
             }
 
-            setupConnection(conn);
+            setupConnection(conn, false);
         }
 
         function broadcastPlayerSync() {
@@ -774,9 +809,7 @@
             };
             Object.values(peerConnections).forEach(conn => {
                 if (conn && conn.open) {
-                    try {
-                        conn.send(payload);
-                    } catch(e) {}
+                    try { conn.send(payload); } catch(e) {}
                 }
             });
         }
@@ -805,7 +838,6 @@
                             gameState.pollen = cap;
                         }
                     }
-                    // Spawn Token chance
                     if (Math.random() < 0.25) {
                         spawnToken(fl.x, fl.y, 'POLLEN', 15);
                     }
@@ -819,11 +851,9 @@
                     mob.hp -= tool.power * 5;
                     sound.hit();
                     if (mob.hp <= 0) {
-                        // Kill Mob rewards
                         spawnToken(mob.x, mob.y, 'HONEY', 500);
                         spawnToken(mob.x, mob.y, 'ROYAL_JELLY', 1);
                         showToast(`Defeated ${mob.type}!`, 'bg-amber-600');
-                        // Respawn Mob
                         mob.hp = mob.maxHp;
                         mob.x = 400 + Math.random() * 500;
                         mob.y = 700 + Math.random() * 200;
@@ -831,7 +861,6 @@
                 }
             });
 
-            // Quest check
             checkQuestProgress('HARVEST', tool.power);
         }
 
@@ -848,7 +877,6 @@
             if (q.type === type) {
                 gameState.questProgress += amount;
                 if (gameState.questProgress >= q.target) {
-                    // Reward
                     gameState.honey += q.rewardHoney;
                     gameState.royalJelly += q.rewardRJ;
                     showToast(`Quest Complete: ${q.name}! +${q.rewardHoney} Honey`, 'bg-amber-500');
@@ -934,7 +962,6 @@
             const slotCost = getHiveSlotCost();
             document.getElementById('hiveSlotCostText').innerText = `Cost: ${slotCost.toLocaleString()} Honey`;
 
-            // Render Tool Upgrades
             const toolsList = document.getElementById('shopToolsList');
             toolsList.innerHTML = `<div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Scooper Upgrades</div>`;
             TOOLS.forEach((tool, index) => {
@@ -963,7 +990,6 @@
                 toolsList.appendChild(itemDiv);
             });
 
-            // Render Container Upgrades
             const containersList = document.getElementById('shopContainersList');
             containersList.innerHTML = `<div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Backpack Upgrades</div>`;
             CONTAINERS.forEach((cont, index) => {
@@ -993,7 +1019,6 @@
             });
         }
 
-        // Shop Buy Slot
         document.getElementById('buyHiveSlotBtn').onclick = () => {
             const cost = getHiveSlotCost();
             if (gameState.honey >= cost) {
@@ -1007,7 +1032,6 @@
             }
         };
 
-        // Shop Buy Egg
         document.getElementById('buyEggBtn').onclick = () => {
             if (gameState.honey >= 500) {
                 if (gameState.bees.length < gameState.maxHiveSlots) {
@@ -1023,7 +1047,6 @@
             }
         };
 
-        // Shop Buy Royal Jelly
         document.getElementById('buyRJBtn').onclick = () => {
             if (gameState.honey >= 2500) {
                 gameState.honey -= 2500;
@@ -1042,7 +1065,7 @@
             const list = document.getElementById('beeListContainer');
             list.innerHTML = '';
 
-            gameState.bees.forEach((bee, idx) => {
+            gameState.bees.forEach((bee) => {
                 const info = BEE_TYPES[bee.type] || BEE_TYPES.BASIC;
                 const div = document.createElement('div');
                 div.className = 'bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center gap-2';
@@ -1064,7 +1087,6 @@
                 div.querySelector('button').onclick = () => {
                     if (gameState.royalJelly > 0) {
                         gameState.royalJelly--;
-                        // Randomly roll new rarity
                         const roll = Math.random();
                         let newType = 'BASIC';
                         if (roll > 0.95) newType = 'MYTHIC';
@@ -1121,13 +1143,6 @@
             };
         }
 
-        // Attach action handlers cleanly with safety checks
-        const swingBtn = document.getElementById('btnSwing');
-        if (swingBtn) {
-            swingBtn.onclick = scoopPollen;
-        }
-
-        // Spacebar or Click to scoop pollen on canvas
         canvas.addEventListener('click', () => scoopPollen());
         window.addEventListener('keydown', e => {
             if (e.code === 'Space') scoopPollen();
@@ -1137,7 +1152,6 @@
         let lastTime = performance.now();
 
         function update(dt) {
-            // Movement Logic
             let speed = (gameState.speedBoost ? 10.5 : 3.5);
             let dx = 0;
             let dy = 0;
@@ -1159,7 +1173,6 @@
             if (!gameState.unlockedGates) {
                 fields.forEach(field => {
                     if (field.reqBees > gameState.bees.length) {
-                        // Block entering field bounds
                         if (nextX > field.x && nextX < field.x + field.w &&
                             nextY > field.y && nextY < field.y + field.h) {
                             nextX = player.x;
@@ -1170,7 +1183,6 @@
                 });
             }
 
-            // World Edge Collisions
             player.x = Math.max(20, Math.min(WORLD.width - 20, nextX));
             player.y = Math.max(20, Math.min(WORLD.height - 20, nextY));
 
@@ -1188,7 +1200,6 @@
             // Bee AI Movement & Pollen Gathering
             updateBeesWorld();
             beesWorld.forEach((bee, idx) => {
-                // Follow player with offset
                 const targetX = player.x + Math.cos(Date.now() / 300 + idx) * (30 + idx * 8);
                 const targetY = player.y + Math.sin(Date.now() / 300 + idx) * (30 + idx * 8);
 
@@ -1206,7 +1217,6 @@
 
                 const dist = Math.hypot(t.x - player.x, t.y - player.y);
                 if (dist < 40) {
-                    // Magnetize to player
                     t.x += (player.x - t.x) * 0.2;
                     t.y += (player.y - t.y) * 0.2;
 
@@ -1247,31 +1257,19 @@
             if (document.getElementById('pollenBar')) document.getElementById('pollenBar').style.width = `${Math.min(100, (gameState.pollen / CONTAINERS[gameState.containerIndex].capacity) * 100)}%`;
             if (document.getElementById('beesVal')) document.getElementById('beesVal').innerText = `${gameState.bees.length} / ${gameState.maxHiveSlots}`;
             if (document.getElementById('rjVal')) document.getElementById('rjVal').innerText = gameState.royalJelly;
-
-            // Quest HUD update (if quest text element exists)
-            const questEl = document.getElementById('questText');
-            if (questEl) {
-                const activeQ = QUESTS[gameState.activeQuestIndex];
-                if (activeQ) {
-                    questEl.innerText = `${activeQ.name}: ${Math.floor(gameState.questProgress)} / ${activeQ.target} Pollen`;
-                } else {
-                    questEl.innerText = 'All Quests Completed!';
-                }
-            }
         }
 
-        // --- RENDER LOOP (Dynamic Camera & Graphics) ---
+        // --- RENDER LOOP ---
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Camera follow player centered
             const camX = player.x - canvas.width / 2;
             const camY = player.y - canvas.height / 2;
 
             ctx.save();
             ctx.translate(-camX, -camY);
 
-            // Draw Map Background Grid
+            // Background Grid
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
@@ -1288,7 +1286,7 @@
                 ctx.stroke();
             }
 
-            // Draw Fields & Flowers
+            // Fields
             fields.forEach(field => {
                 ctx.fillStyle = field.color;
                 ctx.globalAlpha = 0.3;
@@ -1297,13 +1295,12 @@
                 ctx.strokeStyle = '#f59e0b';
                 ctx.strokeRect(field.x, field.y, field.w, field.h);
 
-                // Field Title & Req
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 14px Inter';
                 ctx.fillText(`${field.name} (${field.reqBees} Bees)`, field.x + 10, field.y - 8);
             });
 
-            // Draw Flowers
+            // Flowers
             flowers.forEach(fl => {
                 if (fl.stage > 0) {
                     ctx.fillStyle = fl.stage === 3 ? '#facc15' : fl.stage === 2 ? '#fde047' : '#fef08a';
@@ -1313,14 +1310,14 @@
                 }
             });
 
-            // Draw Hive
+            // Hive
             ctx.fillStyle = '#d97706';
             ctx.fillRect(hivePos.x, hivePos.y, hivePos.w, hivePos.h);
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 16px Inter';
             ctx.fillText('🍯 YOUR HIVE (Step here to convert pollen)', hivePos.x + 15, hivePos.y + 55);
 
-            // Draw Tokens
+            // Tokens
             tokens.forEach(t => {
                 ctx.fillStyle = t.type === 'HONEY' ? '#fbbf24' : t.type === 'ROYAL_JELLY' ? '#ea580c' : '#fef08a';
                 ctx.beginPath();
@@ -1330,7 +1327,7 @@
                 ctx.stroke();
             });
 
-            // Draw Mobs
+            // Mobs
             mobs.forEach(mob => {
                 ctx.fillStyle = '#ef4444';
                 ctx.beginPath();
@@ -1341,15 +1338,13 @@
                 ctx.fillText(mob.type, mob.x - 25, mob.y - mob.radius - 5);
             });
 
-            // Draw Remote Players (Multiplayer Peers)
+            // Remote Players
             Object.values(remotePlayers).forEach(p => {
-                // Remote Player Body
                 ctx.fillStyle = '#818cf8';
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Name Tag & Bees count
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 12px Inter';
                 ctx.textAlign = 'center';
@@ -1357,14 +1352,13 @@
                 ctx.textAlign = 'start';
             });
 
-            // Draw Local Bees
+            // Local Bees
             beesWorld.forEach(bee => {
                 const bInfo = BEE_TYPES[bee.type] || BEE_TYPES.BASIC;
                 ctx.fillStyle = bInfo.color;
                 ctx.beginPath();
                 ctx.arc(bee.x, bee.y, 7, 0, Math.PI * 2);
                 ctx.fill();
-                // Bee wings
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
                 ctx.beginPath();
                 ctx.arc(bee.x - 4, bee.y - 6, 4, 0, Math.PI * 2);
@@ -1372,7 +1366,7 @@
                 ctx.fill();
             });
 
-            // Draw Local Player
+            // Local Player
             ctx.fillStyle = '#f59e0b';
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
@@ -1402,7 +1396,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Initialize PeerJS on load
         window.onload = () => {
             initPeerJS();
             requestAnimationFrame(gameLoop);
